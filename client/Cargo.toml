@@ -1,5 +1,6 @@
 [package]
 name = "client"
+description = "Minimalistic tcp client that sends messages to the server and prints the response"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -9,5 +10,6 @@ authors = ["Stepan Kizim <stsiapan.kizim@gmail.com>"]
 
 [dependencies]
 anyhow = "1"
+clap = { version = "4.4", features = ["derive"] }
 flume = "0.11"
 tokio = { version = "1", features = [ "rt", "macros", "net", "io-util" ] }

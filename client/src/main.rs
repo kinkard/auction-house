@@ -1,13 +1,20 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+use clap::Parser;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+#[derive(Parser)]
+#[command(about)]
+struct Cli {
+    /// Address to connect to. Example: localhost:3000
+    #[arg(value_name = "addr:port")]
+    addr: String,
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let addr = std::env::args()
-        .nth(1)
-        .context("Usage: client <addr:port>\nExample: cargo run localhost:3000")?;
+    let cli = Cli::parse();
 
-    let stream = tokio::net::TcpStream::connect(&addr).await?;
+    let stream = tokio::net::TcpStream::connect(&cli.addr).await?;
     let (mut tcp_reader, mut tcp_writer) = tokio::io::split(stream);
 
     let tcp_reader_task = tokio::spawn(async move {
