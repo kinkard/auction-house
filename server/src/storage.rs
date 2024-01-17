@@ -17,6 +17,31 @@ pub(crate) struct Storage {
 impl Storage {
     pub(crate) fn open(path: &str) -> Result<Self> {
         let db = rusqlite::Connection::open(path)?;
+
+        // Enable Write-Ahead Logging (WAL) mode for better performance and to enable concurrent reads and writes.
+        // This pragma speeds up the database aprox 10x times.
+        // https://www.sqlite.org/wal.html
+        let journal_mode: String = db.query_row("PRAGMA journal_mode=WAL", (), |row| row.get(0))?;
+        if journal_mode != "wal" && path != ":memory:" {
+            Err(anyhow::anyhow!(
+                "Failed to enable WAL mode. Current journal mode: {journal_mode}"
+            ))?;
+        }
+
+        // From SQLite documentation (https://www.sqlite.org/compile.html):
+        // ```
+        // For maximum database safety following a power loss, the setting of PRAGMA synchronous=FULL is
+        // recommended. However, in WAL mode, complete database integrity is guaranteed with PRAGMA
+        // synchronous=NORMAL. With PRAGMA synchronous=NORMAL in WAL mode, recent changes to the database
+        // might be rolled back by a power loss, but the database will not be corrupted. Furthermore,
+        // transaction commit is much faster in WAL mode using synchronous=NORMAL than with the default
+        // synchronous=FULL. For these reasons, it is recommended that the synchronous setting be changed
+        // from FULL to NORMAL when switching to WAL mode.
+        //  ```
+        // This pragma speeds up the database aprox 1.5x times on top of the gain from the WAL mode.
+        // See https://www.sqlite.org/pragma.html#pragma_synchronous for more details
+        db.execute("PRAGMA synchronous=NORMAL", ())?;
+
         db.execute(
             "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
