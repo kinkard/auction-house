@@ -56,7 +56,7 @@
           "kind": "bin"
         }
       },
-      "args": [],
+      "args": ["--port", "3000", "--db", "db.sqlite"],
       "cwd": "${workspaceFolder}"
     },
     {

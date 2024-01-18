@@ -57,6 +57,28 @@ async fn main() -> Result<()> {
     let listener = TcpListener::bind(("localhost", cli.port)).await?;
     println!("Listening on port {}", cli.port);
 
+    // launch a periodic task to process sell orders
+    let storage_clone = storage.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        loop {
+            // todo: we should tick less often if there are no sell orders
+            interval.tick().await;
+
+            let unix_now = std::time::UNIX_EPOCH
+                .elapsed()
+                .expect("It is earlier than UNIX_EPOCH, no way to process expired sell orders")
+                .as_secs() as i64;
+            if let Err(err) = storage_clone
+                .lock()
+                .await
+                .process_expired_sell_orders(unix_now)
+            {
+                println!("Failed to process sell orders at {unix_now} unix time: {err:#}");
+            }
+        }
+    });
+
     loop {
         let (socket, _) = listener.accept().await?;
         let storage = storage.clone();
