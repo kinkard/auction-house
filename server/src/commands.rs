@@ -23,11 +23,19 @@ impl CommandsProcessor {
         };
 
         match command {
+            "view_items" => self.view_items().await,
             "deposit" => self.deposit(args).await,
             "withdraw" => self.withdraw(args).await,
-            "view_items" => self.view_items().await,
             _ => Err(anyhow!("Unknown command '{command}'")),
         }
+    }
+
+    async fn view_items(&self) -> Result<String> {
+        self.storage
+            .lock()
+            .await
+            .view_items(self.user_id)
+            .map(|items| format!("Items: {items:?}"))
     }
 
     async fn deposit(&self, args: &str) -> Result<String> {
@@ -60,14 +68,6 @@ impl CommandsProcessor {
             .withdraw(self.user_id, item_name, quantity)
             .with_context(|| format!("Failed to withdraw {quantity} {item_name}(s)"))
             .map(|()| format!("Successfully withdrawed {quantity} {item_name}(s)"))
-    }
-
-    async fn view_items(&self) -> Result<String> {
-        self.storage
-            .lock()
-            .await
-            .view_items(self.user_id)
-            .map(|items| format!("Items: {items:?}"))
     }
 }
 
