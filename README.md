@@ -10,19 +10,13 @@ This is a port of the [Auction House](https://github.com/kinkard/auction-house-c
 - User can create immediate or auction sell orders using `sell [immediate|auction] <item_name> [<quantity>] <price>` command. For example, `sell Sword 1 100` will create a immediate sell order for 1 Sword for 100 funds. 5% + 1 funds will be taken as a fee
 - User can see all sell orders via `view_sell_orders`
 - User can buy item that is on sale or make a bid on auction order. Sell orders are refered by id. For example, `buy 20` will buy order #20, while `buy 20 200` will made a bid to the order #20 with 200 funds. User will see errors if order is not matched, if bid is smaller than current price and so on
-- User will see notifications (if they are still connected) once their sell order is executed, either immediate or auction
-- All transactions are available in transaction log
-
-Technical details:
-
-- State is managed by sqlite3 via transactions, that guarantee that server will never go in incorrect state
-- Each user processed in a asynchronous manner (povered by boost.asio, that is included into the project as a standalone library), effectively utilizing CPU and memory
-- Supported platforms: MacOS, Linux (tested on Ubuntu 22.04 LTS), Windows (VS2019)
+- **todo:** User will see notifications (if they are still connected) once their sell order is executed, either immediate or auction
+- **todo:** All transactions are available in transaction log
 
 ## Build & Run
 
 ```sh
-cargo run --release 3000 db.sqlite transaction.log
+cargo run --release 3000 db.sqlite
 ```
 
 Transaction log can be monitored via `tail -f transaction.log`.
