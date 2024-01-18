@@ -5,7 +5,7 @@ use anyhow::Result;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct UserId(i64);
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct User {
     pub(crate) id: UserId,
     pub(crate) username: String,

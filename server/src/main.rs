@@ -99,7 +99,7 @@ async fn main() -> Result<()> {
                 }
             };
 
-            let processor = commands::CommandsProcessor::new(user.id, storage);
+            let processor = commands::CommandsProcessor::new(user.clone(), storage);
 
             loop {
                 let request = match tcp_reader.read().await {

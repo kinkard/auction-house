@@ -3,16 +3,40 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use tokio::sync::Mutex;
 
-use crate::storage::{SellOrderType, Storage, UserId};
+use crate::storage::{SellOrderType, Storage, User};
 
 pub(crate) struct CommandsProcessor {
-    user_id: UserId,
+    user: User,
     storage: Arc<Mutex<Storage>>,
 }
 
+const HELP_MESSAGE: &str =
+    "Available commands:
+    - whoami: Displays the username of the current user
+    - ping: Replies 'pong'
+    - help: Prints this help message about all available commands
+
+    - deposit: Deposits a specified amount into the user's account. Format: 'deposit <item name> [<quantity>]'.
+      'fund' is a special item name that can be used to deposit funds into the user's account
+      Example: 'deposit funds 100' - deposits 100 funds, 'deposit Sword' - deposits 1 Sword
+    - withdraw: Withdraws a specified amount from the user's account. Format: 'withdraw <item name> [<quantity>]'
+      Example: 'withdraw arrow 5' - withdraws 5 arrows, 'withdraw Sword' - withdraws 1 Sword
+    - view_items: Displays a list items for the current user
+
+    - view_sell_orders: Displays a list of all sell orders from all users
+    - sell: Places an item for sale at a specified price. Format: 'sell [immediate|auction] <item_name> [<quantity>] <price>'
+      - immediate sell order - will be executed immediately once someone buys it. Otherwise it will expire in 5 minutes
+        and items will be returned to the seller, but not the fee, which is `5% of the price + 1` funds
+      - auction sell order - will be executed once it expires if someone placed a bid on it
+    - buy: Executes immediate sell order or places a bid on a auction sell order. Format: 'buy <sell_order_id> [<bid>]'
+      - no bid - executes immediate sell order
+      - bid - places a bid on a auction sell order
+
+    Usage: <command> [<args>], where `[]` annotates optional argumet(s)";
+
 impl CommandsProcessor {
-    pub(crate) fn new(user_id: UserId, storage: Arc<Mutex<Storage>>) -> Self {
-        Self { user_id, storage }
+    pub(crate) fn new(user: User, storage: Arc<Mutex<Storage>>) -> Self {
+        Self { user, storage }
     }
 
     pub(crate) async fn process_request(&self, request: &str) -> Result<String> {
@@ -23,9 +47,14 @@ impl CommandsProcessor {
         };
 
         match command {
+            "ping" => Ok("pong".to_string()),
+            "whoami" => Ok(self.user.username.clone()),
+            "help" => Ok(HELP_MESSAGE.to_string()),
+
             "view_items" => self.view_items().await,
             "deposit" => self.deposit(args).await,
             "withdraw" => self.withdraw(args).await,
+
             "view_sell_orders" => self.view_sell_orders().await,
             "sell" => self.sell(args).await,
             "buy" => self.buy(args).await,
@@ -37,7 +66,7 @@ impl CommandsProcessor {
         self.storage
             .lock()
             .await
-            .view_items(self.user_id)
+            .view_items(self.user.id)
             .map(|items| format!("Items: {items:?}"))
     }
 
@@ -52,7 +81,7 @@ impl CommandsProcessor {
         self.storage
             .lock()
             .await
-            .deposit(self.user_id, item_name, quantity)
+            .deposit(self.user.id, item_name, quantity)
             .with_context(|| format!("Failed to deposit {quantity} {item_name}(s)"))
             .map(|()| format!("Successfully deposited {quantity} {item_name}(s)"))
     }
@@ -68,7 +97,7 @@ impl CommandsProcessor {
         self.storage
             .lock()
             .await
-            .withdraw(self.user_id, item_name, quantity)
+            .withdraw(self.user.id, item_name, quantity)
             .with_context(|| format!("Failed to withdraw {quantity} {item_name}(s)"))
             .map(|()| format!("Successfully withdrawed {quantity} {item_name}(s)"))
     }
@@ -149,7 +178,7 @@ impl CommandsProcessor {
             .await
             .place_sell_order(
                 order_type,
-                self.user_id,
+                self.user.id,
                 item_name,
                 quantity,
                 price,
@@ -185,14 +214,14 @@ impl CommandsProcessor {
             self.storage
                 .lock()
                 .await
-                .place_bid_on_auction_sell_order(self.user_id, sell_order_id, bid)
+                .place_bid_on_auction_sell_order(self.user.id, sell_order_id, bid)
                 .with_context(|| format!("Failed to place bid on sell order #{sell_order_id}"))
                 .map(|()| format!("Successfully placed bid on sell order #{sell_order_id}"))
         } else {
             self.storage
                 .lock()
                 .await
-                .execute_immediate_sell_order(self.user_id, sell_order_id)
+                .execute_immediate_sell_order(self.user.id, sell_order_id)
                 .with_context(|| {
                     format!("Failed to executed immediate sell order #{sell_order_id}")
                 })
